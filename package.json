@@ -14,12 +14,17 @@
     "public": "npm publish --access=public"
   },
   "keywords": [
-    "child_process", "keep", "alive"
+    "child_process",
+    "keep",
+    "alive"
   ],
   "author": "mh-cbon <mh-cbon@users.noreply.github.com>",
   "license": "MIT",
   "dependencies": {
+    "@mh-cbon/uri-to-stream": "^1.0.1",
     "debug": "^2.2.0",
-    "minimist": "^1.2.0"
+    "ip": "^0.1.2",
+    "minimist": "^1.2.0",
+    "mississippi": "^1.2.0"
   }
 }

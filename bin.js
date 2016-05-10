@@ -1,90 +1,146 @@
-var argv = require('minimist')(process.argv);
-var AtMost = require('./lib/at-most.js')
-var KeepAlive = require('./lib/keep-alive.js')
-var PortWatcher = require('./lib/port-watcher.js')
-var Connector = require("./lib/connector.js")
+var pkg           = require('./package.json')
+var debug         = require('./lib/debug.js')(pkg.name);
+var debugStream   = require('./lib/debug.js').stream;
 
+debugStream.pipe(process.stderr);
+
+var argv          = require('minimist')(process.argv);
+var ip            = require('ip')
+var AtMost        = require('./lib/at-most.js')
+var KeepAlive     = require('./lib/keep-alive.js')
+var PortWatcher   = require('./lib/port-watcher.js')
+var Connector     = require("./lib/connector.js")
+
+// remove nodejs and this script path.
 argv['_'].shift();argv['_'].shift();
 
-if (argv['_'][0].match(/\.js$/)) argv['_'].unshift(process.argv[0]);
+// prepend this nodejs if the bin is a js file.
+if (argv['_'][0].match(/\.js$/))
+  argv['_'].unshift(process.argv[0]);
 
-var most    = new AtMost(argv.retry || 3, argv.retryduration || 1000 * 60 * 1);
-var ka      = new KeepAlive(argv['_'].shift(), argv['_'], {stdio: 'pipe'});
+debug('argv %j', argv)
+
+var retryTimespan   = 'retrytimespan' in argv ? argv.retrytimespan * 60 : 1000 * 60 * 1;
+var retryTimes      = 'retry' in argv ? parseInt(argv.retry) : 3;
+
+var watchAddress    = argv.watchaddress;
+var watchForward    = argv.watchforward;
+var watchInativity  = 'watchinactvity' in argv ? argv.watchinactvity * 60 : 1000 * 60 * 1;
+
+var stdoutRedirect  = argv.stdout;
+var stderrRedirect  = argv.stderr;
+
+var bin = argv['_'].shift();
+var binArgs = argv['_'];
+
+// transforms watchAddress / watchForward
+// into an option object
+// if it is not a port number only
+
+if (watchAddress && watchAddress.toString().match(/[^0-9]/)) {
+  var uri  = require('url').parse(watchAddress);
+  var host = uri.hostname || uri.host;
+  watchAddress = {
+    port: uri.port,
+    host: host,
+    family: (ip.isV4Format(host) && '4') || (ip.isV6Format(host) && '6') || null
+  };
+}
+
+if (watchForward && watchForward.toString().match(/[^0-9]/)) {
+  var uri  = require('url').parse(watchForward);
+  var host = uri.hostname || uri.host;
+  watchForward = {
+    port: uri.port,
+    host: host,
+    family: (ip.isV4Format(host) && '4') || (ip.isV6Format(host) && '6') || null
+  };
+}
+
+// ok, let s go.
+var most    = new AtMost(retryTimes, retryTimespan);
+var ka      = new KeepAlive(bin, binArgs, {stdio: 'pipe'});
 
 var watcher;
-if (argv.port)
-  watcher = new PortWatcher(argv.watchaddress, argv.watchinactvity || 1000 * 60 * 10, argv.watchforward);
+if (watchAddress)
+  watcher = new PortWatcher(watchAddress, watchInativity, watchForward);
 
-var co;
-if (argv.stdout || argv.stderr)
-  co = new Connector(argv.stdout, argv.stderr);
+var co = new Connector();
 
-if (!watcher) {
-  ka.keepAlive();
-} else {
-  ka.leftForDead();
+co.enable(stdoutRedirect, stderrRedirect);
+debugStream.pipe(co.stderr);
 
-  watcher.on('active', function () {
-    ka.once('start', function (child) {
-      watcher.once('inactive', function () {
-        ka.leftForDead()
-        child.kill();
-      })
+watcher && ka.leftForDead();
+watcher && watcher.on('active', function () {
+  ka.once('start', function (child) {
+    watcher.startForward();
+    watcher.once('inactive', function () {
+      watcher.stopForward();
+      ka.leftForDead()
+      child.kill('SIGTERM');
     })
-    ka.keepAlive();
-    ka.start();
   })
-}
+  ka.keepAlive();
+  ka.start();
+})
+watcher && watcher.on('error', function (err) {
+  // port to watch unavailable
+  // let s just quit.
+  process.exit(1);
+})
+co.on('error', debug.bind(debug))
+
 ka.on('close', function (child) {
-  co && co.disconnect(child)
+  co.disconnect(child);
   most.eventOccured();
   if (most.hasExceeded()) {
     ka.leftForDead();
+    co.destroy();
   }
 })
 ka.on('start', function (child) {
-  co && co.connect(child)
+  co.connect(child)
+  process.once('SIGINT', function () {
+    child.kill('SIGINT')
+  })
+  process.once('SIGTERM', function () {
+    console.log('GOT SIGTERM')
+    child.kill('SIGTERM')
+  })
+})
+
+process.nextTick(function () {
+  !watcher && ka.keepAlive();
+  !watcher && ka.start();
 })
 
 
 
-
-
+// following provides debug informations
 watcher && watcher.on('active', function () {
-  console.log('watcher being active')
+  debug('watcher being active')
   ka.once('start', function (child) {
     watcher.once('inactive', function () {
-      console.log('watcher being inactive')
+      debug('watcher being inactive')
     })
   })
 })
 ka.on('close', function (child) {
   if (most.hasExceeded()) {
-    console.log("re spawned too often")
+    debug("re spawned too often, leaving for dead")
   } else {
-    console.log("can continue")
+    debug("can continue")
   }
 })
-ka.on('close', function (child) {
-  process.stdin.unpipe(child.stdin);
-  process.stdin.removeAllListeners('data');
-  process.stdin.pause();
-})
 ka.on('start', function (child) {
-  console.log("child.event start")
-  process.stdin.pipe(child.stdin);
-  process.stdin.on('data', function (d) {
-    if (d.toString()==='kill\n') {
-      child.kill();
-    }
-  })
+  debug("child.event start")
   child.on('exit', function () {
-    console.log("child.event exit")
+    debug("child.event exit")
   })
   child.on('close', function () {
-    console.log("child.event close")
+    debug("child.event close")
   })
   child.stdin.on('error', function () {
-    console.log('error')
+    debug('error')
   })
 })
