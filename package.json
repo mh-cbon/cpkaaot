@@ -26,5 +26,8 @@
     "ip": "^0.1.2",
     "minimist": "^1.2.0",
     "mississippi": "^1.2.0"
+  },
+  "devDependencies": {
+    "should": "^8.3.1"
   }
 }

@@ -1,7 +1,10 @@
 var pkg           = require('./package.json')
+var errorDebug    = require('./lib/error-debug.js')
 var debug         = require('./lib/debug.js')(pkg.name);
 var debugStream   = require('./lib/debug.js').stream;
 
+errorDebug(debugStream, 'debug.stream')
+errorDebug(process.stderr, 'process.stderr')
 debugStream.pipe(process.stderr);
 
 var argv          = require('minimist')(process.argv);
@@ -70,11 +73,16 @@ var co = new Connector();
 co.enable(stdoutRedirect, stderrRedirect);
 debugStream.pipe(co.stderr);
 
+errorDebug(co, 'connector')
+watcher && errorDebug(watcher, 'watcher')
+
 watcher && ka.leftForDead();
 watcher && watcher.on('active', function () {
+  debug('watcher being active')
   ka.once('start', function (child) {
     watcher.startForward();
     watcher.once('inactive', function () {
+      debug('watcher being inactive')
       watcher.stopForward();
       ka.leftForDead()
       child.kill('SIGTERM');
@@ -88,59 +96,39 @@ watcher && watcher.on('error', function (err) {
   // let s just quit.
   process.exit(1);
 })
-co.on('error', debug.bind(debug))
 
 ka.on('close', function (child) {
+  debug('child.close')
   co.disconnect(child);
   most.eventOccured();
   if (most.hasExceeded()) {
+    debug("re spawned too often, leaving for dead")
     ka.leftForDead();
     co.destroy();
   }
 })
 ka.on('start', function (child) {
+  debug("child.event start pid=%s", child.pid)
   co.connect(child)
   process.once('SIGINT', function () {
+    debug("child.send SIGINT")
     child.kill('SIGINT')
   })
   process.once('SIGTERM', function () {
-    console.log('GOT SIGTERM')
+    debug("child.send SIGTERM")
     child.kill('SIGTERM')
   })
+  child.on('exit', function (code, sign) {
+    debug("child.event exit code=%s signal=%s", code, sign)
+  })
+  child.on('close', function (code, sign) {
+    debug("child.event close code=%s signal=%s", code, sign)
+  })
+  errorDebug(child, 'child')
+  errorDebug(child.stdin, 'child.stdin')
+  errorDebug(child.stdout, 'child.stdout')
+  errorDebug(child.stderr, 'child.stderr')
 })
 
-process.nextTick(function () {
-  !watcher && ka.keepAlive();
-  !watcher && ka.start();
-})
-
-
-
-// following provides debug informations
-watcher && watcher.on('active', function () {
-  debug('watcher being active')
-  ka.once('start', function (child) {
-    watcher.once('inactive', function () {
-      debug('watcher being inactive')
-    })
-  })
-})
-ka.on('close', function (child) {
-  if (most.hasExceeded()) {
-    debug("re spawned too often, leaving for dead")
-  } else {
-    debug("can continue")
-  }
-})
-ka.on('start', function (child) {
-  debug("child.event start")
-  child.on('exit', function () {
-    debug("child.event exit")
-  })
-  child.on('close', function () {
-    debug("child.event close")
-  })
-  child.stdin.on('error', function () {
-    debug('error')
-  })
-})
+!watcher && ka.keepAlive();
+!watcher && ka.start();
