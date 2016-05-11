@@ -51,3 +51,11 @@ cpkaaot --retry 3 --retrytimespan 180000 --stdout tcp://ip:port -- [bin args]
 cpkaaot --retry 3 --retrytimespan 180000 --stderr file://path/ -- [bin args]
 
 ```
+
+# Tests
+
+To run the tests
+
+```sh
+DEBUG=cpkaaot mocha
+```

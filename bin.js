@@ -30,8 +30,8 @@ var watchAddress    = argv.watchaddress;
 var watchForward    = argv.watchforward;
 var watchInativity  = 'watchinactvity' in argv ? argv.watchinactvity * 60 : 1000 * 60 * 1;
 
-var stdoutRedirect  = argv.stdout;
-var stderrRedirect  = argv.stderr;
+var stdoutRedirect  = argv.stdout==='-' ? process.stdout : argv.stdout;
+var stderrRedirect  = argv.stderr==='-' ? process.stderr : argv.stderr;
 
 var bin = argv['_'].shift();
 var binArgs = argv['_'];
@@ -71,7 +71,7 @@ if (watchAddress)
 var co = new Connector();
 
 co.enable(stdoutRedirect, stderrRedirect);
-debugStream.pipe(co.stderr);
+process.stderr!==stderrRedirect && debugStream.pipe(co.stderr);
 
 errorDebug(co, 'connector')
 watcher && errorDebug(watcher, 'watcher')
@@ -115,8 +115,12 @@ ka.on('start', function (child) {
     child.kill('SIGINT')
   })
   process.once('SIGTERM', function () {
-    debug("child.send SIGTERM")
-    child.kill('SIGTERM')
+    debug("child.send SIGTERM");
+    co.disconnect(child);
+    co.destroy();
+    ka.leftForDead();
+    child.kill('SIGTERM');
+    // process.exit();
   })
   child.on('exit', function (code, sign) {
     debug("child.event exit code=%s signal=%s", code, sign)

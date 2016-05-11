@@ -27,7 +27,6 @@ describe('connector', function () {
         c.end();
         server.close(function () {
           opened.should.eql(true);
-          co.disable();
           co.destroy();
           done();
         });
@@ -48,7 +47,6 @@ describe('connector', function () {
         c.end();
         server.close(function () {
           opened.should.eql(true);
-          co.disable();
           co.destroy();
           done();
         });
@@ -68,10 +66,9 @@ describe('connector', function () {
     var server = net.createServer((c) => {
       c.end();
       if (cnt>2) {
-        co.disable();
-        co.destroy();
         server.close(function () {
           events.should.eql('openendopenend')
+          co.destroy();
           done();
         });
       }
@@ -95,7 +92,6 @@ describe('connector', function () {
       if (cnt>2) {
         server.close(function () {
           events.should.eql('openendopenend');
-          co.disable();
           co.destroy();
           done();
         });
@@ -121,7 +117,6 @@ describe('connector', function () {
       })
       c.end();
       if (cnt>2) {
-        co.disable();
         co.destroy();
         server.close(function () {
           data.should.eql('open1end2open3')
@@ -151,7 +146,6 @@ describe('connector', function () {
       if (cnt>2) {
         server.close(function () {
           data.should.eql('open1end2open3');
-          co.disable();
           co.destroy();
           done();
         });
@@ -173,18 +167,16 @@ describe('connector', function () {
     // clean up debug stream for next test scripts
     var stream = require('../lib/debug.js').stream;
     var tout;
-    stream.on('data', function (d) {
+    var onData = function (d) {
       clearTimeout(tout);
       tout = setTimeout(function () {
-        stream.removeAllListeners('data');
+        stream.removeListener('data', onData);
         done();
-      }, 100);
+      }, 250);
       process.stdout.write(d)
-    })
-    tout = setTimeout(function () {
-      stream.removeAllListeners('data');
-      done();
-    }, 100);
+    };
+    stream.on('data', onData)
+    onData('');
     stream.resume();
   })
 })
