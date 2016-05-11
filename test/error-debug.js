@@ -1,5 +1,10 @@
 require('should')
 
+/*
+!!!!!!!!!!!! DEBUG=cpkaaot env MUST be set.
+otherwise this suite fails.
+*/
+
 var miss        = require('mississippi')
 var pkg         = require('../package.json')
 var stream      = require('../lib/debug.js').stream
