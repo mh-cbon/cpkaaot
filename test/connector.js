@@ -172,7 +172,6 @@ describe('connector', function () {
   after(function (done) {
     // clean up debug stream for next test scripts
     var stream = require('../lib/debug.js').stream;
-    stream.resume();
     var tout;
     stream.on('data', function (d) {
       clearTimeout(tout);
@@ -182,5 +181,10 @@ describe('connector', function () {
       }, 100);
       process.stdout.write(d)
     })
+    tout = setTimeout(function () {
+      stream.removeAllListeners('data');
+      done();
+    }, 100);
+    stream.resume();
   })
 })
