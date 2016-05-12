@@ -1,6 +1,6 @@
 {
   "name": "@mh-cbon/cpkaaot",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "child_process keep alive and other things",
   "main": "index.js",
   "scripts": {
