@@ -95,16 +95,16 @@ describe('cpkaaot', function () {
     setTimeout(function () {
       stdoutServer.close();
       stderrServer.close();
+      setTimeout(function () {
+        stdoutServer = makeServer(5978, stdout)
+        stderrServer = makeServer(5979, stderr)
+        setTimeout(function () {
+          stdoutServer.close();
+          stderrServer.close();
+          child.kill('SIGTERM');
+        }, 1000)
+      }, 600)
     }, 500)
-    setTimeout(function () {
-      stdoutServer = makeServer(5978, stdout)
-      stderrServer = makeServer(5979, stderr)
-    }, 600)
-    setTimeout(function () {
-      stdoutServer.close();
-      stderrServer.close();
-      child.kill('SIGTERM');
-    }, 1000)
 
     this.timeout(5000)
   })
