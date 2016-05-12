@@ -17,7 +17,7 @@ describe('debug', function () {
       d = d.replace(/\[[0-9]+m/ig, '')
       d = d.replace(/[0-9]+ms$/, '')
       d = d.replace(/^\s*|\s*$/g, '')
-      d.should.eql('cpkaaot something')
+      d.should.eql('mhcboncpkaaot something')
       done();
     })
     debug('something')
@@ -29,7 +29,7 @@ describe('debug', function () {
       d = d.replace(/\[[0-9]+m/ig, '')
       d = d.replace(/[0-9]+ms$/, '')
       d = d.replace(/^\s*|\s*$/g, '')
-      d.should.eql('cpkaaot something')
+      d.should.eql('mhcboncpkaaot something')
       done();
     })
     debug('%s', 'something')

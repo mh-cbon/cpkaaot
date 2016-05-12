@@ -57,5 +57,5 @@ cpkaaot --retry 3 --retrytimespan 180000 --stderr file://path/ -- [bin args]
 To run the tests
 
 ```sh
-DEBUG=cpkaaot mocha
+DEBUG=@mh-cbon/cpkaaot mocha
 ```

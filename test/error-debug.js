@@ -21,7 +21,7 @@ describe('error-debug', function () {
       d = d.replace(/\[[0-9]+m/ig, '')
       d = d.replace(/[0-9]+ms$/, '')
       d = d.replace(/^\s*|\s*$/g, '')
-      d.should.eql('cpkaaot s.error=something')
+      d.should.eql('mhcboncpkaaot s.error=something')
       done();
     })
     s.emit('error', 'something')
