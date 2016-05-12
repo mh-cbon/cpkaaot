@@ -3,6 +3,9 @@
   "version": "1.0.2",
   "description": "child_process keep alive and other things",
   "main": "index.js",
+  "bin": {
+    "cpkaaot": "./bin.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "patch": "npm version patch -m \"patch %s\"",
