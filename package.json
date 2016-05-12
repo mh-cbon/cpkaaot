@@ -1,6 +1,6 @@
 {
   "name": "cpkaaot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "child_process keep alive and other things",
   "main": "index.js",
   "scripts": {
