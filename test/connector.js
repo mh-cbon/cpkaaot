@@ -21,15 +21,21 @@ describe('connector', function () {
     var opened = false;
     var co = new Connector();
     co.on('error', function (){ /* void */ })
-    co.enable('tcp://127.0.0.1:8154')
+    co.enable('tcp://127.0.0.1:8154');
+    var k = 0;
     setTimeout(function () {
       var server = net.createServer((c) => {
+        // beware that both port-lookup and stream-reconnect
+        // will connect here.
         c.end();
-        server.close(function () {
-          opened.should.eql(true);
-          co.destroy();
-          done();
-        });
+        k++;
+        if (k>2) {
+          server.close(function () {
+            opened.should.eql(true);
+            co.destroy();
+            done();
+          });
+        }
       });
       server.listen(8154, '127.0.0.1')
       co.once('open.remote.stdout', function () {
@@ -42,14 +48,20 @@ describe('connector', function () {
     var co = new Connector();
     co.on('error', function (){ /* void */ })
     co.enable(null, 'tcp://127.0.0.1:8154')
+    var k = 0;
     setTimeout(function () {
       var server = net.createServer((c) => {
+        // beware that both port-lookup and stream-reconnect
+        // will connect here.
         c.end();
-        server.close(function () {
-          opened.should.eql(true);
-          co.destroy();
-          done();
-        });
+        k++;
+        if (k>2) {
+          server.close(function () {
+            opened.should.eql(true);
+            co.destroy();
+            done();
+          });
+        }
       });
       server.listen(8154, '127.0.0.1')
       co.once('open.remote.stderr', function () {
@@ -112,6 +124,8 @@ describe('connector', function () {
     co.on('error', function (){ /* void */ })
     co.enable('tcp://127.0.0.1:8156')
     var server = net.createServer((c) => {
+      // beware that both port-lookup and stream-reconnect
+      // will connect here.
       c.on('data', function (d) {
         data+=d.toString();
       })
@@ -119,17 +133,22 @@ describe('connector', function () {
       if (cnt>2) {
         co.destroy();
         server.close(function () {
-          data.should.eql('open1end2open3')
+          data.should.eql('open0end0open1end1open2')
+          // note: it is not ending with end2
+          // 'coz, the remote has ended (line 137),
+          // then we write data, the remote is yet ended,
+          // so the data is in the buffer of co.stdout,
+          // not sent to the remote, thus not read on the server (!!).
           done();
         });
       }
-      cnt++;
     }).listen(8156, '127.0.0.1')
     co.on('open.remote.stdout', function () {
       co.stdout.write('open'+cnt)
     })
     co.on('end.remote.stdout', function () {
       co.stdout.write('end'+cnt)
+      cnt++;
     })
   })
   it('can buffer data if stderr remote goes offline', function (done) {
@@ -139,24 +158,31 @@ describe('connector', function () {
     co.on('error', function (){ /* void */ })
     co.enable(null, 'tcp://127.0.0.1:8157')
     var server = net.createServer((c) => {
+      // beware that both port-lookup and stream-reconnect
+      // will connect here.
       c.on('data', function (d) {
         data+=d.toString();
       })
       c.end();
       if (cnt>2) {
+        co.destroy();
         server.close(function () {
-          data.should.eql('open1end2open3');
-          co.destroy();
+          data.should.eql('open0end0open1end1open2');
+          // note: it is not ending with end2
+          // 'coz, the remote has ended (line 137),
+          // then we write data, the remote is yet ended,
+          // so the data is in the buffer of co.stdout,
+          // not sent to the remote, thus not read on the server (!!).
           done();
         });
       }
-      cnt++;
     }).listen(8157, '127.0.0.1')
     co.on('open.remote.stderr', function () {
       co.stderr.write('open'+cnt)
     })
     co.on('end.remote.stderr', function () {
       co.stderr.write('end'+cnt)
+      cnt++;
     })
   })
   it.skip('can write stdout to a file')

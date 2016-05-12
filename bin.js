@@ -109,19 +109,23 @@ ka.on('close', function (child) {
 })
 ka.on('start', function (child) {
   debug("child.event start pid=%s", child.pid)
-  co.connect(child)
-  process.once('SIGINT', function () {
+  co.connect(child);
+  var onSigInt = function () {
+    process.removeListener('SIGTERM', onSigTerm);
     debug("child.send SIGINT")
     child.kill('SIGINT')
-  })
-  process.once('SIGTERM', function () {
+  }
+  var onSigTerm = function () {
+    process.removeListener('SIGINT', onSigInt);
+    // exit sequence
     debug("child.send SIGTERM");
+    child.kill('SIGTERM');
     co.disconnect(child);
     co.destroy();
     ka.leftForDead();
-    child.kill('SIGTERM');
-    // process.exit();
-  })
+  }
+  process.once('SIGINT', onSigInt);
+  process.once('SIGTERM', onSigTerm);
   child.on('exit', function (code, sign) {
     debug("child.event exit code=%s signal=%s", code, sign)
   })

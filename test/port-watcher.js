@@ -2,7 +2,6 @@ require('should')
 
 var miss        = require('mississippi')
 var pkg         = require('../package.json')
-var stream      = require('../lib/debug.js').stream
 var debug       = require('../lib/debug.js')(pkg.name);
 var net         = require('net');
 var PortWatcher = require('../lib/port-watcher.js')
@@ -32,7 +31,7 @@ describe('port-watcher', function () {
         })
       }, 500)
     });
-  })
+  });
   it('fails when the port is not available', function (done) {
     var server = net.createServer();
     server.on('listening', function () {

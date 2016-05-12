@@ -7,7 +7,13 @@ var net     = require('net');
 
 describe('cpkaaot', function () {
   it('restarts the process', function (done) {
-    var child = spawn(process.argv[0], ['bin.js', '--stdout=-', '--stderr=-', '--', 'utils/writer.js'], {env:{DEBUG:'*'}});
+    var child = spawn(process.argv[0], [
+        'bin.js',
+        '--stdout=-',
+        '--stderr=-',
+        '--', 'utils/writer.js'
+      ], {env:{DEBUG:'*'}}
+    );
     // child.stdout.pipe(process.stderr);
     // child.stderr.pipe(process.stderr);
     var stderr = '';
@@ -22,6 +28,8 @@ describe('cpkaaot', function () {
     }, 500)
     child.on('close', function () {
       stderr.match(/child\.event start/g).length.should.eql(2)
+      stderr.match(/child\.send SIGINT/g).length.should.eql(1)
+      stderr.match(/child\.send SIGTERM/g).length.should.eql(1)
       done();
     })
   })
