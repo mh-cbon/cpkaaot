@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var pkg           = require('./package.json')
 var errorDebug    = require('./lib/error-debug.js')
 var debug         = require('./lib/debug.js')(pkg.name);
